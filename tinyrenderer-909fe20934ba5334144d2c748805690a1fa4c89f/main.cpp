@@ -4,8 +4,6 @@ const TGAColor white = TGAColor(255, 255, 255, 255);
 const TGAColor red   = TGAColor(255, 0,   0,   255);
 
 void line(int x1, int y1, int x2, int y2, TGAImage &image, TGAColor color) {
-	x1 = x1 + x2;
-	x2 = x1 - x2;
 	int tmp = 0;
 	if(x1 > x2) {
 		tmp = x1;
