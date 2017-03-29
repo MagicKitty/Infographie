@@ -1,4 +1,4 @@
-SYSCONF_LINK = g++
+SYSCONF_LINK = g++ -ggdb -g3 -pg
 CPPFLAGS     =
 LDFLAGS      =
 LIBS         = -lm
