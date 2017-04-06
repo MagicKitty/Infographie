@@ -14,21 +14,21 @@ Model *model = NULL;
 const int width  = 2000;
 const int height = 2000;
 
-void line(Vec2i t0, Vec2i t1, TGAImage &image, TGAColor color) {
+void line(Vec2i A, Vec2i B, TGAImage &image, TGAColor color) {
     bool steep = false;
-    if (std::abs(t0.x-t1.x)<std::abs(t0.y-t1.y)) {
-        std::swap(t0.x, t0.y);
-        std::swap(t1.x, t1.y);
+    if (std::abs(A.x-B.x)<std::abs(A.y-B.y)) {
+        std::swap(A.x, A.y);
+        std::swap(B.x, B.y);
         steep = true;
     }
-    if (t0.x>t1.x) {
-        std::swap(t0.x, t1.x);
-        std::swap(t0.y, t1.y);
+    if (A.x>B.x) {
+        std::swap(A.x, B.x);
+        std::swap(A.y, B.y);
     }
 
-    for (int x=t0.x; x<=t1.x; x++) {
-        float t = (x-t0.x)/(float)(t1.x-t0.x);
-        int y = t0.y*(1.-t) + t1.y*t;
+    for (int x=A.x; x<=B.x; x++) {
+        float t = (x-A.x)/(float)(B.x-A.x);
+        int y = A.y*(1.-t) + B.y*t;
         if (steep) {
             image.set(y, x, color);
         } else {
@@ -38,32 +38,37 @@ void line(Vec2i t0, Vec2i t1, TGAImage &image, TGAColor color) {
 }
 
 void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) {
-    Vec3f t0 = pts[0];
-    Vec3f t1 = pts[1];
-    Vec3f t2 = pts[2];
-    if (t0.y==t1.y && t0.y==t2.y) return; //degenerated triangles
-    int minx = std::min(t0.x,std::min(t1.x,t2.x));
-    int maxx = std::max(t0.x,std::max(t1.x,t2.x));
-    int miny = std::min(t0.y,std::min(t1.y,t2.y));
-    int maxy = std::max(t0.y,std::max(t1.y,t2.y));
-    int dx10=t1.x-t0.x;
-    int dx02=t0.x-t2.x;
-    int dx21=t2.x-t1.x;
-    int dy10=t1.y-t0.y;
-    int dy02=t0.y-t2.y;
-    int dy21=t2.y-t1.y;
+    Vec3f A = pts[0];
+    Vec3f B = pts[1];
+    Vec3f C = pts[2];
+    int minx = std::min(A.x,std::min(B.x,C.x));
+    int maxx = std::max(A.x,std::max(B.x,C.x));
+    int miny = std::min(A.y,std::min(B.y,C.y));
+    int maxy = std::max(A.y,std::max(B.y,C.y));
+    double dx10=B.x-A.x;
+    double dx02=A.x-C.x;
+    double dx21=C.x-B.x;
+    double dy10=B.y-A.y;
+    double dy02=A.y-C.y;
+    double dy21=C.y-B.y;
     Vec3f P;
+    double alpha=0.;
+    double beta=0.;
     for(int j=miny;j<maxy;j++){
-        int dyj0=j-t0.y;
-        int dyj2=j-t2.y;
-        int dyj1=j-t1.y;
+        double dyj0=j-A.y;
+        double dyj2=j-C.y;
+        double dyj1=j-B.y;
         for(int i=minx;i<maxx;i++){
-            if(((dx10*dyj0-dy10*(i-t0.x)>=0)&&
-                (dx02*dyj2-dy02*(i-t2.x)>=0)&&
-                (dx21*dyj1-dy21*(i-t1.x)>=0))||
-               ((dx10*dyj0-dy10*(i-t0.x)<=0)&&
-                (dx02*dyj2-dy02*(i-t2.x)<=0)&&
-                (dx21*dyj1-dy21*(i-t1.x)<=0))){
+            if(((dx10*dyj0-dy10*(i-A.x)>=0)&&
+            (dx02*dyj2-dy02*(i-C.x)>=0)&&
+            (dx21*dyj1-dy21*(i-B.x)>=0))||
+            ((dx10*dyj0-dy10*(i-A.x)<=0)&&
+            (dx02*dyj2-dy02*(i-C.x)<=0)&&
+            (dx21*dyj1-dy21*(i-B.x)<=0))){
+                P.x=i;P.y=j;
+                alpha = ((B.y-C.y)*(P.x-C.x)+(C.x-B.x)*(P.y-C.y))/((B.y-C.y)*(A.x-C.x)+(C.x-B.x)*(A.y-C.y));
+                beta = ((C.y-A.y)*(P.x-C.x)+(A.x-C.x)*(P.y-C.y))/((B.y-C.y)*(A.x-C.x)+(C.x-B.x)*(A.y-C.y));
+                P.z = alpha*A.z+beta*B.z+C.z*(1-alpha-beta);
                 if (zbuffer[int(i+j*width)]<P.z) {
                     zbuffer[int(i+j*width)]=P.z;
                     image.set(i,j,color);
@@ -112,4 +117,3 @@ int main(int argc, char** argv) {
     delete model;
     return 0;
 }
-
