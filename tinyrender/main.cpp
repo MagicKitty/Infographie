@@ -37,7 +37,7 @@ void line(Vec2i A, Vec2i B, TGAImage &image, TGAColor color) {
     }
 }
 
-void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) {
+void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, Vec2f *uv, float intensity) {
     Vec3f A = pts[0];
     Vec3f B = pts[1];
     Vec3f C = pts[2];
@@ -54,6 +54,9 @@ void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) {
     Vec3f P;
     double alpha=0.;
     double beta=0.;
+    float u=0.;
+    float v=0.;
+    Vec2f UV;
     for(int j=miny;j<maxy;j++){
         double dyj0=j-A.y;
         double dyj2=j-C.y;
@@ -69,9 +72,12 @@ void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, TGAColor color) {
                 alpha = ((B.y-C.y)*(P.x-C.x)+(C.x-B.x)*(P.y-C.y))/((B.y-C.y)*(A.x-C.x)+(C.x-B.x)*(A.y-C.y));
                 beta = ((C.y-A.y)*(P.x-C.x)+(A.x-C.x)*(P.y-C.y))/((B.y-C.y)*(A.x-C.x)+(C.x-B.x)*(A.y-C.y));
                 P.z = alpha*A.z+beta*B.z+C.z*(1-alpha-beta);
+                u = alpha*uv[0][0]+beta*uv[1][0]+uv[2][0]*(1-alpha-beta);
+                v = alpha*uv[0][1]+beta*uv[1][1]+uv[2][1]*(1-alpha-beta);
+                UV[0]=u;UV[1]=v;
                 if (zbuffer[int(i+j*width)]<P.z) {
                     zbuffer[int(i+j*width)]=P.z;
-                    image.set(i,j,color);
+                    image.set(i,j,model->diffuse(UV)*intensity);
                 }
             }
         }
@@ -100,19 +106,21 @@ int main(int argc, char** argv) {
         std::vector<int> face = model->face(i);
         Vec3f pts_s[3];
         Vec3f pts_w[3];
+        Vec2f uv[3];
         for (int j=0; j<3; j++){
             pts_s[j] = world2screen(model->vert(face[j]));
+            uv[j]=model->uv(i,j);
             pts_w[j] = model->vert(face[j]);
         }
-        Vec3f n = (pts_w[2]-pts_w[0])^(pts_w[1]-pts_w[0]);
+        Vec3f n = cross((pts_w[2]-pts_w[0]),(pts_w[1]-pts_w[0]));
         n.normalize();
         float intensity = n*light_dir;
         if (intensity>0) {
-            triangle(pts_s, zbuffer, image, TGAColor(intensity*255, intensity*255, intensity*255, 255));
+            triangle(pts_s, zbuffer, image, uv, intensity);
         }
     }
 
-    image.flip_vertically(); // i want to have the origin at the left bottom corner of the image
+    image.flip_vertically();
     image.write_tga_file("output.tga");
     delete model;
     return 0;
