@@ -14,28 +14,6 @@ Model *model = NULL;
 const int width  = 2000;
 const int height = 2000;
 
-void line(Vec2i A, Vec2i B, TGAImage &image, TGAColor color) {
-    bool steep = false;
-    if (std::abs(A.x-B.x)<std::abs(A.y-B.y)) {
-        std::swap(A.x, A.y);
-        std::swap(B.x, B.y);
-        steep = true;
-    }
-    if (A.x>B.x) {
-        std::swap(A.x, B.x);
-        std::swap(A.y, B.y);
-    }
-
-    for (int x=A.x; x<=B.x; x++) {
-        float t = (x-A.x)/(float)(B.x-A.x);
-        int y = A.y*(1.-t) + B.y*t;
-        if (steep) {
-            image.set(y, x, color);
-        } else {
-            image.set(x, y, color);
-        }
-    }
-}
 
 void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, Vec2f *uv, float intensity) {
     Vec3f A = pts[0];
@@ -77,11 +55,30 @@ void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, Vec2f *uv, float inte
                 UV[0]=u;UV[1]=v;
                 if (zbuffer[int(i+j*width)]<P.z) {
                     zbuffer[int(i+j*width)]=P.z;
-                    image.set(i,j,model->diffuse(UV)*intensity);
+		    TGAColor color = model->diffuse(UV);
+                    image.set(i,j,TGAColor(color[2]*intensity,color[1]*intensity,color[0]*intensity));
                 }
             }
         }
     }
+}
+
+void drawZBuffer(float *zbuffer,TGAImage &zbufferImage) {
+  float zmin=1e10, zmax=-1e10;
+  for (int i=0; i<width*height; i++) {
+    float z = zbuffer[i];
+    if (z<-1e10) continue;
+    zmin = std::min(zmin, z);
+    zmax = std::max(zmax, z);
+  }
+
+  for(int j=0;j<width;j++) {
+    for(int i=0;i<height;i++) {
+      float z = zbuffer[i+j*width];
+      if (z<-1e10) continue;
+      zbufferImage.set(i,j,255.*(z-zmin)/(zmax-zmin));
+    }
+  }
 }
 
 Vec3f world2screen(Vec3f v) {
@@ -96,6 +93,7 @@ int main(int argc, char** argv) {
     }
 
     TGAImage image(width, height, TGAImage::RGB);
+    TGAImage zbufferImage(width, height, TGAImage::GRAYSCALE);
     Vec3f light_dir(0,0,-1);
     float *zbuffer = new float[width*height];
     for (int i=0;i<width*height; i++) {
@@ -116,12 +114,16 @@ int main(int argc, char** argv) {
         n.normalize();
         float intensity = n*light_dir;
         if (intensity>0) {
-            triangle(pts_s, zbuffer, image, uv, intensity);
+	  triangle(pts_s, zbuffer, image, uv, intensity);
         }
     }
 
+    drawZBuffer(zbuffer,zbufferImage);
+
     image.flip_vertically();
     image.write_tga_file("output.tga");
+    zbufferImage.flip_vertically();
+    zbufferImage.write_tga_file("zbuffer.tga");
     delete model;
     return 0;
 }
