@@ -55,7 +55,7 @@ void triangle(Vec3f *pts, float *zbuffer, TGAImage &image, Vec2f *uv, float inte
                 UV[0]=u;UV[1]=v;
                 if (zbuffer[int(i+j*width)]<P.z) {
                     zbuffer[int(i+j*width)]=P.z;
-		    TGAColor color = model->diffuse(UV);
+		            TGAColor color = model->diffuse(UV);
                     image.set(i,j,TGAColor(color[2]*intensity,color[1]*intensity,color[0]*intensity));
                 }
             }
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
         n.normalize();
         float intensity = n*light_dir;
         if (intensity>0) {
-	  triangle(pts_s, zbuffer, image, uv, intensity);
+	        triangle(pts_s, zbuffer, image, uv, intensity);
         }
     }
 
